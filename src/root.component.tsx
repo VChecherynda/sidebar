@@ -1,33 +1,71 @@
 import { useEffect, useState } from "react";
 const api = require("@home/api");
-const { List, Button, Typography } = require("@home/components");
+const { InfiniteScroll, List, Skeleton } = require("@home/components");
+
+const styles = {
+  scrollContainer: {
+    height: 400,
+    overflow: 'auto',
+    padding: '0 16px',
+    borderBottom: '1px solid rgba(140, 140, 140, 0.35)',
+  }
+}
 
 export default function Root(props) {
+
+  console.log('[props]', props);
+
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadMoreData = () => {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+
+    api.fetchButchProducts({ limit: products.length + 10})
+      .then((res) => {
+        setProducts(res.products);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const data = await api.fetchProducts();
-
-      setProducts(data?.products);
-    };
-
-    fetchData();
+    loadMoreData()
   }, []);
 
+
   return (
-    <section id="sidebar">
-      <List
-        header={<div>Header</div>}
-        footer={<div>Footer</div>}
-        bordered
-        dataSource={products}
-        renderItem={(item) => (
-          <List.Item>
-            <Typography.Text>{item.brand}</Typography.Text>
-          </List.Item>
-        )}
-      />
+    <section>
+      <div id="scrollableDiv"
+        style={styles.scrollContainer}>
+        <InfiniteScroll
+          dataLength={products.length}
+          next={loadMoreData}
+          hasMore={products.length < 100}
+          scrollableTarget="scrollableDiv"
+        >
+          <List
+            dataSource={products}
+            renderItem={(item) => (
+              <List.Item>
+                  <Skeleton avatar title={false} loading={item.loading} active>
+                    <List.Item.Meta
+                      // avatar={<Avatar src={item.picture.large} />}
+                      title={<a href={`/catalog/?productId=${item.id}`}>{item.title}</a>}
+                      description={<span>{item.brand}</span>}
+                    />
+                  </Skeleton>
+              </List.Item>
+            )}
+          />
+        </InfiniteScroll>
+      </div>
     </section>
   );
 }
